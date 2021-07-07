@@ -718,6 +718,46 @@ services:
         ipv4_address: 172.16.239.38
 {% endif %}
 
+
+  postgres:
+    image: postgres:12.7-alpine
+    command: postgres -c 'max_connections=500'
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      quorum-dev-quickstart:
+        ipv4_address: 172.16.239.41
+
+  blockscout:
+    image: consensys/blockscout:e3d5778
+    depends_on:
+      - rpcnode
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://postgres:@postgres:5432/postgres?ssl=false
+      - NETWORK=POA
+      - COIN=eth
+      - ETHEREUM_JSONRPC_VARIANT=besu
+      - ETHEREUM_JSONRPC_TRANSPORT=http
+      - ETHEREUM_JSONRPC_HTTP_URL=http://rpcnode:8545
+      - ETHEREUM_JSONRPC_WS_URL=ws://rpcnode:8546
+      - PORT=4000
+      - CHAIN_ID=1337
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo $$MIX_ENV && mix do ecto.create, ecto.migrate ;
+        mix phx.server
+    links:
+      - rpcnode
+      - postgres
+    ports:
+      - 4000:4000/tcp
+    networks:
+      quorum-dev-quickstart:
+        ipv4_address: 172.16.239.42
+
 networks:
   quorum-dev-quickstart:
     driver: bridge
